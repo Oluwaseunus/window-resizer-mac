@@ -1,6 +1,6 @@
 //
 //  AccessibilityManager.swift
-//  WindowResizerGPT
+//  WindowResizer
 //
 //  Created by Oluwaseun Adetunji on 08/12/2024.
 //
@@ -163,6 +163,7 @@ class AccessibilityManager: NSObject {
       targetWidth = windowElement.width
       targetHeight = windowElement.height
       break
+      
     case "smaller":
       guard let windowElement = getElementSize(element: window) else { return }
       targetWidth = windowElement.width - screenFrame.width * 0.1
@@ -175,8 +176,22 @@ class AccessibilityManager: NSObject {
         windowElement.width + screenFrame.width * 0.1,
         screenFrame.width * 0.95
       )
-      print("targetWidth: \(targetWidth), desired: \(windowElement.width + screenFrame.width * 0.1), max: \(screenFrame.width * 0.95)")
       targetHeight = windowElement.height
+      break
+      
+    case "taller":
+      guard let windowElement = getElementSize(element: window) else { return }
+      targetWidth = windowElement.width
+      targetHeight = min(
+        windowElement.height + screenFrame.height * 0.1,
+        screenFrame.height * 0.95
+      )
+      break
+      
+    case "shorter":
+      guard let windowElement = getElementSize(element: window) else { return }
+      targetWidth = windowElement.width
+      targetHeight = windowElement.height - screenFrame.height * 0.1
       break
       
     default:
@@ -213,6 +228,14 @@ class AccessibilityManager: NSObject {
             
           case String(UnicodeScalar(NSRightArrowFunctionKey)!):
             self.resizeActiveWindow(preset: "larger")
+            break
+            
+          case String(UnicodeScalar(NSUpArrowFunctionKey)!):
+            self.resizeActiveWindow(preset: "taller")
+            break
+            
+          case String(UnicodeScalar(NSDownArrowFunctionKey)!):
+            self.resizeActiveWindow(preset: "shorter")
             break
             
           default:

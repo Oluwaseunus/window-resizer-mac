@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  WindowResizerGPT
+//  WindowResizer
 //
 //  Created by Oluwaseun Adetunji on 07/12/2024.
 //

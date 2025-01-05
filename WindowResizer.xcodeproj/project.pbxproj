@@ -7,26 +7,26 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		761D2EB62D04D81300E0E593 /* WindowResizerGPT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WindowResizerGPT.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		761D2EB62D04D81300E0E593 /* WindowResizer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WindowResizer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		761D2ECC2D0508B400E0E593 /* Exceptions for "WindowResizerGPT" folder in "WindowResizerGPT" target */ = {
+		761D2ECC2D0508B400E0E593 /* Exceptions for "WindowResizer" folder in "WindowResizer" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 761D2EB52D04D81300E0E593 /* WindowResizerGPT */;
+			target = 761D2EB52D04D81300E0E593 /* WindowResizer */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		761D2EB82D04D81300E0E593 /* WindowResizerGPT */ = {
+		761D2EB82D04D81300E0E593 /* WindowResizer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				761D2ECC2D0508B400E0E593 /* Exceptions for "WindowResizerGPT" folder in "WindowResizerGPT" target */,
+				761D2ECC2D0508B400E0E593 /* Exceptions for "WindowResizer" folder in "WindowResizer" target */,
 			);
-			path = WindowResizerGPT;
+			path = WindowResizer;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -45,7 +45,7 @@
 		761D2EAD2D04D81300E0E593 = {
 			isa = PBXGroup;
 			children = (
-				761D2EB82D04D81300E0E593 /* WindowResizerGPT */,
+				761D2EB82D04D81300E0E593 /* WindowResizer */,
 				761D2EB72D04D81300E0E593 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -53,7 +53,7 @@
 		761D2EB72D04D81300E0E593 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				761D2EB62D04D81300E0E593 /* WindowResizerGPT.app */,
+				761D2EB62D04D81300E0E593 /* WindowResizer.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,9 +61,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		761D2EB52D04D81300E0E593 /* WindowResizerGPT */ = {
+		761D2EB52D04D81300E0E593 /* WindowResizer */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 761D2EC52D04D81400E0E593 /* Build configuration list for PBXNativeTarget "WindowResizerGPT" */;
+			buildConfigurationList = 761D2EC52D04D81400E0E593 /* Build configuration list for PBXNativeTarget "WindowResizer" */;
 			buildPhases = (
 				761D2EB22D04D81300E0E593 /* Sources */,
 				761D2EB32D04D81300E0E593 /* Frameworks */,
@@ -74,13 +74,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				761D2EB82D04D81300E0E593 /* WindowResizerGPT */,
+				761D2EB82D04D81300E0E593 /* WindowResizer */,
 			);
-			name = WindowResizerGPT;
+			name = WindowResizer;
 			packageProductDependencies = (
 			);
 			productName = WindowResizerGPT;
-			productReference = 761D2EB62D04D81300E0E593 /* WindowResizerGPT.app */;
+			productReference = 761D2EB62D04D81300E0E593 /* WindowResizer.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -98,7 +98,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 761D2EB12D04D81300E0E593 /* Build configuration list for PBXProject "WindowResizerGPT" */;
+			buildConfigurationList = 761D2EB12D04D81300E0E593 /* Build configuration list for PBXProject "WindowResizer" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -112,7 +112,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				761D2EB52D04D81300E0E593 /* WindowResizerGPT */,
+				761D2EB52D04D81300E0E593 /* WindowResizer */,
 			);
 		};
 /* End PBXProject section */
@@ -261,18 +261,18 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = WindowResizerGPT/WindowResizerGPT.entitlements;
+				CODE_SIGN_ENTITLEMENTS = WindowResizer/WindowResizer.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"WindowResizerGPT/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"WindowResizer/Preview Content\"";
 				DEVELOPMENT_TEAM = 44W3Z47GTK;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = WindowResizerGPT/Info.plist;
+				INFOPLIST_FILE = WindowResizer/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -294,18 +294,18 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = WindowResizerGPT/WindowResizerGPT.entitlements;
+				CODE_SIGN_ENTITLEMENTS = WindowResizer/WindowResizer.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"WindowResizerGPT/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"WindowResizer/Preview Content\"";
 				DEVELOPMENT_TEAM = 44W3Z47GTK;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = WindowResizerGPT/Info.plist;
+				INFOPLIST_FILE = WindowResizer/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -325,7 +325,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		761D2EB12D04D81300E0E593 /* Build configuration list for PBXProject "WindowResizerGPT" */ = {
+		761D2EB12D04D81300E0E593 /* Build configuration list for PBXProject "WindowResizer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				761D2EC32D04D81400E0E593 /* Debug */,
@@ -334,7 +334,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		761D2EC52D04D81400E0E593 /* Build configuration list for PBXNativeTarget "WindowResizerGPT" */ = {
+		761D2EC52D04D81400E0E593 /* Build configuration list for PBXNativeTarget "WindowResizer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				761D2EC62D04D81400E0E593 /* Debug */,
