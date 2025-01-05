@@ -146,8 +146,8 @@ class AccessibilityManager: NSObject {
     
     switch preset {
     case "reasonableSize":
-      targetWidth = max(screenFrame.width * 0.6, 1024)
-      targetHeight = max(screenFrame.height * 0.6, 900)
+      targetWidth = min(screenFrame.width * 0.6, 1024)
+      targetHeight = min(screenFrame.height * 0.6, 900)
       break
     case "almostMaximize":
       targetWidth = screenFrame.width * 0.9
