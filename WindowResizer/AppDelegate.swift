@@ -52,6 +52,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     center.target = AccessibilityManager.shared
     menu.addItem(center)
     
+    let full = NSMenuItem(
+      title: "Full",
+      action: #selector(AccessibilityManager.shared.full),
+      keyEquivalent: "f"
+    )
+    full.target = AccessibilityManager.shared
+    menu.addItem(full)
+    
     menu.addItem(NSMenuItem.separator())
     
     menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
