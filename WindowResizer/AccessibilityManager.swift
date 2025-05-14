@@ -50,7 +50,6 @@ class AccessibilityManager: NSObject {
       kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false
     ]
     
-    NSLog(AXIsProcessTrustedWithOptions(options as CFDictionary) ? "yes" : "no")
     return AXIsProcessTrustedWithOptions(options as CFDictionary)
   }
   
@@ -75,12 +74,10 @@ class AccessibilityManager: NSObject {
   }
   
   private func pollAccessibilityPermissions() {
-    
     if checkAccessibilityPermissions() {
-      print("Accessibility permissions granted.")
+      // Permissions granted, set up hotkeys
       registerGlobalHotkeys()
       return
-      
     }
   }
   
@@ -88,101 +85,16 @@ class AccessibilityManager: NSObject {
     return screen.frame.width / screen.frame.height == 1.6
   }
   
-  func getCurrentScreenPrevious() -> NSScreen? {
-    print("getCurrentScreen: Starting screen detection")
-    
-    // Get the frontmost application
-    guard let frontApp = NSWorkspace.shared.frontmostApplication else {
-      print("getCurrentScreen: No frontmost application found, falling back to main screen")
-      return NSScreen.main
-    }
-    print("getCurrentScreen: Found frontmost application: \(frontApp.localizedName ?? "unknown")")
-    let pid = frontApp.processIdentifier
-    
-    // Create accessibility element for the app
-    let axApp = AXUIElementCreateApplication(pid)
-    print("getCurrentScreen: Created AX element for app with PID: \(pid)")
-    
-    // Get the focused window
-    var focusedWindow: CFTypeRef?
-    let result = AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedWindow)
-    
-    guard result == .success,
-          let window = focusedWindow as! AXUIElement? else {
-      print("getCurrentScreen: Failed to get focused window, error: \(result)")
-      print("getCurrentScreen: Is accessibility permission granted? Check System Settings -> Privacy & Security -> Accessibility")
-      return NSScreen.main
-    }
-    print("getCurrentScreen: Successfully got focused window")
-    
-    // Get the window position and size
-    var position: CFTypeRef?
-    var size: CFTypeRef?
-    let posResult = AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &position)
-    let sizeResult = AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &size)
-    
-    guard posResult == .success && sizeResult == .success,
-          let axPosition = position as! AXValue?,
-          let axSize = size as! AXValue?,
-          AXValueGetType(axPosition) == .cgPoint,
-          AXValueGetType(axSize) == .cgSize else {
-      print("getCurrentScreen: Failed to get window position/size")
-      print("getCurrentScreen: Position result: \(posResult), Size result: \(sizeResult)")
-      return NSScreen.main
-    }
-    print("getCurrentScreen: Successfully got window position and size")
-    
-    var windowPosition = CGPoint.zero
-    var windowSize = CGSize.zero
-    AXValueGetValue(axPosition, .cgPoint, &windowPosition)
-    AXValueGetValue(axSize, .cgSize, &windowSize)
-    
-    print("getCurrentScreen: Window position: \(windowPosition), size: \(windowSize)")
-    
-    // Create window rect
-    let windowRect = CGRect(origin: windowPosition, size: windowSize)
-    
-    // Track the screen with maximum overlap
-    var maxOverlapArea: CGFloat = 0
-    var screenWithMaxOverlap: NSScreen?
-    
-    // Find the screen with the largest window overlap
-    print("getCurrentScreen: Checking overlap with \(NSScreen.screens.count) screens")
-    for (index, screen) in NSScreen.screens.enumerated() {
-      let intersection = screen.frame.intersection(windowRect)
-      let overlapArea = intersection.width * intersection.height
-      print("getCurrentScreen: Screen \(index) - Frame: \(screen.frame), Intersection: \(intersection), Overlap area: \(overlapArea)")
-      
-      if overlapArea > maxOverlapArea {
-        maxOverlapArea = overlapArea
-        screenWithMaxOverlap = screen
-        print("getCurrentScreen: New maximum overlap found with screen \(index)")
-      }
-    }
-    
-    if let screen = screenWithMaxOverlap {
-      print("getCurrentScreen: Returning screen with maximum overlap area: \(maxOverlapArea)")
-      return screen
-    } else {
-      print("getCurrentScreen: No overlap found with any screen, falling back to first screen or main")
-      return NSScreen.screens.first ?? NSScreen.main
-    }
-  }
-  
   func getCurrentScreen() -> NSScreen? {
-    print("getCurrentScreen: Starting screen detection")
-    
     // Get the frontmost application
     guard let frontApp = NSWorkspace.shared.frontmostApplication else {
-      print("getCurrentScreen: No frontmost application found, falling back to main screen")
       return NSScreen.main
     }
-    print("getCurrentScreen: Found frontmost application: \(frontApp.localizedName ?? "unknown")")
+    
     let pid = frontApp.processIdentifier
     
     // Create accessibility element for the app
     let axApp = AXUIElementCreateApplication(pid)
-    print("getCurrentScreen: Created AX element for app with PID: \(pid)")
     
     // Get the focused window
     var focusedWindow: CFTypeRef?
@@ -190,11 +102,9 @@ class AccessibilityManager: NSObject {
     
     guard result == .success,
           let window = focusedWindow as! AXUIElement? else {
-      print("getCurrentScreen: Failed to get focused window, error: \(result)")
-      print("getCurrentScreen: Is accessibility permission granted? Check System Settings -> Privacy & Security -> Accessibility")
+      // Window access failed - might need accessibility permissions
       return NSScreen.main
     }
-    print("getCurrentScreen: Successfully got focused window")
     
     // Get the window position
     var position: CFTypeRef?
@@ -203,41 +113,29 @@ class AccessibilityManager: NSObject {
     guard posResult == .success,
           let axPosition = position as! AXValue?,
           AXValueGetType(axPosition) == .cgPoint else {
-      print("getCurrentScreen: Failed to get window position")
-      print("getCurrentScreen: Position result: \(posResult)")
       return NSScreen.main
     }
-    print("getCurrentScreen: Successfully got window position")
     
     var windowPosition = CGPoint.zero
     AXValueGetValue(axPosition, .cgPoint, &windowPosition)
-    print("getCurrentScreen: Window position: \(windowPosition)")
-    
-    // Get the global screen height to convert coordinates
-    let mainScreenHeight = NSScreen.screens.first?.frame.height ?? 0
     
     // Convert AX (top-left) to Cocoa (bottom-left) coordinates
+    let mainScreenHeight = NSScreen.screens.first?.frame.height ?? 0
     let cocoaY = mainScreenHeight - windowPosition.y
     let cocoaPosition = CGPoint(x: windowPosition.x, y: cocoaY)
     
-    print("getCurrentScreen: Converted position: \(cocoaPosition)")
-    
     // Find the screen containing the window's position
-    print("getCurrentScreen: Checking \(NSScreen.screens.count) screens")
-    for (index, screen) in NSScreen.screens.enumerated() {
-      print("getCurrentScreen: Screen \(index) - Frame: \(screen.frame)")
+    for screen in NSScreen.screens {
       if screen.frame.contains(cocoaPosition) {
-        print("getCurrentScreen: Found window on screen \(index)")
         return screen
       }
     }
     
-    // If no screen contains the point, find the closest screen
-    print("getCurrentScreen: Window position not found in any screen, finding closest screen")
+    // If no screen contains the window, find the closest screen
     var closestScreen = NSScreen.main
     var shortestDistance = CGFloat.infinity
     
-    for (index, screen) in NSScreen.screens.enumerated() {
+    for screen in NSScreen.screens {
       let screenCenter = CGPoint(
         x: screen.frame.midX,
         y: screen.frame.midY
@@ -248,15 +146,12 @@ class AccessibilityManager: NSObject {
         cocoaPosition.y - screenCenter.y
       )
       
-      print("getCurrentScreen: Distance to screen \(index): \(distance)")
-      
       if distance < shortestDistance {
         shortestDistance = distance
         closestScreen = screen
       }
     }
     
-    print("getCurrentScreen: Returning closest screen")
     return closestScreen
   }
   
@@ -281,11 +176,9 @@ class AccessibilityManager: NSObject {
   
   private func getNewWindowSize(preset: String, window: AXUIElement, centered: Bool = true) {
     guard let screen = getCurrentScreen() else { return }
-    print("Positioning on screen: \(screen.frame)")
     
     // Use visibleFrame to account for menu bar and dock
     let screenFrame = screen.visibleFrame
-    print("Screen visible frame: \(screenFrame)")
     
     var targetWidth: CGFloat = 0, targetHeight: CGFloat = 0
     
@@ -342,7 +235,6 @@ class AccessibilityManager: NSObject {
     }
     
     if (targetWidth == 0 && targetHeight == 0) { return }
-    print("Target size: width=\(targetWidth), height=\(targetHeight)")
     
     var newSize = CGSize(width: targetWidth, height: targetHeight)
     
@@ -351,18 +243,13 @@ class AccessibilityManager: NSObject {
     // Calculate X position relative to screen
     let newOriginX = screenFrame.origin.x + (screenFrame.width - targetWidth) / 2
     
-    // For Y position: use screen's max Y as reference point and subtract position from top
+    // Calculate Y position: use screen's max Y as reference and subtract position from top
     let yOffset = (screenFrame.height - targetHeight) / 2
     let newOriginY = -(screenFrame.origin.y + yOffset)
     
-    print("Position calculation:")
-    print("  Screen origin Y: \(screenFrame.origin.y)")
-    print("  Y offset from top: \(yOffset)")
-    print("  Final Y position: \(newOriginY)")
-    
     var newOrigin = CGPoint(x: newOriginX, y: newOriginY)
-    print("Setting window position to: \(newOrigin)")
     
+    // Set the window position and size
     AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, AXValueCreate(.cgPoint, &newOrigin)!)
     AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, AXValueCreate(.cgSize, &newSize)!)
   }
@@ -423,8 +310,6 @@ class AccessibilityManager: NSObject {
   }
   
   private func resizeActiveWindow(preset: String) {
-    print(preset)
-    
     guard let frontApp = NSWorkspace.shared.frontmostApplication else { return }
     let pid = frontApp.processIdentifier
     
@@ -445,32 +330,21 @@ class AccessibilityManager: NSObject {
   }
   
   private func centerAppWindow(window: AXUIElement) {
-    // Get the current screen
     guard let screen = getCurrentScreen() else { return }
-    print("Centering window on screen: \(screen.frame)")
     
     // Get current window size
     guard let windowSize = getElementSize(element: window) else { return }
-    print("Window size: \(windowSize)")
     
     // Use visibleFrame to account for menu bar and dock
     let screenFrame = screen.visibleFrame
-    print("Screen visible frame: \(screenFrame)")
     
-    // Calculate center X position
+    // Calculate center position for both axes
     let newOriginX = screenFrame.origin.x + (screenFrame.width - windowSize.width) / 2
-    
-    // Calculate Y position in AX coordinates (top-left origin)
     let newOriginY = -(screenFrame.maxY - ((screenFrame.height - windowSize.height) / 2))
     
-    print("Position calculation:")
-    print("  Screen frame: \(screenFrame)")
-    print("  Final position: (\(newOriginX), \(newOriginY))")
-    
-    // Create new position
     var newOrigin = CGPoint(x: newOriginX, y: newOriginY)
     
-    // Update window position
+    // Update window position while maintaining its current size
     AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, AXValueCreate(.cgPoint, &newOrigin)!)
   }
 }
