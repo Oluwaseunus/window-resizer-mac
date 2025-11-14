@@ -13,7 +13,47 @@ import ApplicationServices
 /// AccessibilityManager provides window resizing and centering using Accessibility APIs with correct top-left coordinate handling.
 class AccessibilityManager: NSObject {
     static let shared = AccessibilityManager()
-    
+
+    // MARK: - App Exclusion
+    private static let excludedAppsKey = "excludedAppBundleIDs"
+    private var excludedAppBundleIDs: Set<String> = []
+
+    override init() {
+        super.init()
+        loadExcludedApps()
+    }
+
+    private func loadExcludedApps() {
+        if let savedIDs = UserDefaults.standard.array(forKey: Self.excludedAppsKey) as? [String] {
+            excludedAppBundleIDs = Set(savedIDs)
+        }
+    }
+
+    private func saveExcludedApps() {
+        UserDefaults.standard.set(Array(excludedAppBundleIDs), forKey: Self.excludedAppsKey)
+    }
+
+    func isAppExcluded(_ bundleID: String) -> Bool {
+        return excludedAppBundleIDs.contains(bundleID)
+    }
+
+    func toggleAppExclusion(bundleID: String) {
+        if excludedAppBundleIDs.contains(bundleID) {
+            excludedAppBundleIDs.remove(bundleID)
+        } else {
+            excludedAppBundleIDs.insert(bundleID)
+        }
+        saveExcludedApps()
+    }
+
+    func getFrontmostAppBundleID() -> String? {
+        return NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+    }
+
+    func getFrontmostAppName() -> String? {
+        return NSWorkspace.shared.frontmostApplication?.localizedName
+    }
+
     // MARK: - Public Preset Actions
     @objc func almostMaximize() { resizeActiveWindow(preset: .almostMaximize) }
     @objc func reasonableSize() { resizeActiveWindow(preset: .reasonableSize) }
@@ -182,10 +222,15 @@ class AccessibilityManager: NSObject {
         applyPreset(preset, to: window, on: screen)
     }
     
-    // MARK: - Hotkey Registration (unchanged)
+    // MARK: - Hotkey Registration
     private func registerGlobalHotkeys() {
         _ = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
             if event.modifierFlags.contains(.control) {
+                // Check if current frontmost app is excluded from shortcuts
+                if let bundleID = self.getFrontmostAppBundleID(), self.isAppExcluded(bundleID) {
+                    return
+                }
+
                 if event.modifierFlags.contains(.option) {
                     switch event.charactersIgnoringModifiers {
                     case String(UnicodeScalar(NSLeftArrowFunctionKey)!):
