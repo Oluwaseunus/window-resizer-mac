@@ -10,341 +10,205 @@ import AppKit
 import Foundation
 import ApplicationServices
 
+/// AccessibilityManager provides window resizing and centering using Accessibility APIs with correct top-left coordinate handling.
 class AccessibilityManager: NSObject {
-  static let shared = AccessibilityManager()
-  
-  @objc func almostMaximize() {
-    resizeActiveWindow(preset: "almostMaximize")
-  }
-  
-  @objc func reasonableSize() {
-    resizeActiveWindow(preset: "reasonableSize")
-  }
-  
-  @objc func normal() {
-    resizeActiveWindow(preset: "normal")
-  }
-  
-  @objc func center() {
-    resizeActiveWindow(preset: "center")
-  }
-  
-  @objc func full()
-  {
-    resizeActiveWindow(preset: "full")
-  }
-  
-  func checkAndRequestAccessibilityPermissions() {
-    // First, check if permissions are already granted
-    if checkAccessibilityPermissions() {
-      registerGlobalHotkeys()
-      return
-    }
+    static let shared = AccessibilityManager()
     
-    // If not granted, prompt the user
-    promptForAccessibilityPermissions()
-  }
-  
-  private func checkAccessibilityPermissions() -> Bool {
-    let options: [String: Any] = [
-      kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false
-    ]
+    // MARK: - Public Preset Actions
+    @objc func almostMaximize() { resizeActiveWindow(preset: .almostMaximize) }
+    @objc func reasonableSize() { resizeActiveWindow(preset: .reasonableSize) }
+    @objc func normal() { resizeActiveWindow(preset: .normal) }
+    @objc func center() { resizeActiveWindow(preset: .center) }
+    @objc func full() { resizeActiveWindow(preset: .full) }
     
-    return AXIsProcessTrustedWithOptions(options as CFDictionary)
-  }
-  
-  private func promptForAccessibilityPermissions() {
-    let alert = NSAlert()
-    alert.messageText = "Accessibility Permissions Required"
-    alert.informativeText = "This app needs accessibility permissions to resize windows. Please enable permissions in System Preferences."
-    alert.addButton(withTitle: "Open System Preferences")
-    alert.addButton(withTitle: "Cancel")
-    
-    let response = alert.runModal()
-    
-    if response == .alertFirstButtonReturn {
-      // Open System Preferences to Security & Privacy
-      if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-        NSWorkspace.shared.open(url)
-      }
-      
-      // Poll for permissions after opening system preferences
-      pollAccessibilityPermissions()
-    }
-  }
-  
-  private func pollAccessibilityPermissions() {
-    if checkAccessibilityPermissions() {
-      // Permissions granted, set up hotkeys
-      registerGlobalHotkeys()
-      return
-    }
-  }
-  
-  private func is16By10(screen: NSScreen) -> Bool {
-    return screen.frame.width / screen.frame.height == 1.6
-  }
-  
-  func getCurrentScreen() -> NSScreen? {
-    // Get the frontmost application
-    guard let frontApp = NSWorkspace.shared.frontmostApplication else {
-      return NSScreen.main
-    }
-    
-    let pid = frontApp.processIdentifier
-    
-    // Create accessibility element for the app
-    let axApp = AXUIElementCreateApplication(pid)
-    
-    // Get the focused window
-    var focusedWindow: CFTypeRef?
-    let result = AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedWindow)
-    
-    guard result == .success,
-          let window = focusedWindow as! AXUIElement? else {
-      // Window access failed - might need accessibility permissions
-      return NSScreen.main
-    }
-    
-    // Get the window position
-    var position: CFTypeRef?
-    let posResult = AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &position)
-    
-    guard posResult == .success,
-          let axPosition = position as! AXValue?,
-          AXValueGetType(axPosition) == .cgPoint else {
-      return NSScreen.main
-    }
-    
-    var windowPosition = CGPoint.zero
-    AXValueGetValue(axPosition, .cgPoint, &windowPosition)
-    
-    // Convert AX (top-left) to Cocoa (bottom-left) coordinates
-    let mainScreenHeight = NSScreen.screens.first?.frame.height ?? 0
-    let cocoaY = mainScreenHeight - windowPosition.y
-    let cocoaPosition = CGPoint(x: windowPosition.x, y: cocoaY)
-    
-    // Find the screen containing the window's position
-    for screen in NSScreen.screens {
-      if screen.frame.contains(cocoaPosition) {
-        return screen
-      }
-    }
-    
-    // If no screen contains the window, find the closest screen
-    var closestScreen = NSScreen.main
-    var shortestDistance = CGFloat.infinity
-    
-    for screen in NSScreen.screens {
-      let screenCenter = CGPoint(
-        x: screen.frame.midX,
-        y: screen.frame.midY
-      )
-      
-      let distance = hypot(
-        cocoaPosition.x - screenCenter.x,
-        cocoaPosition.y - screenCenter.y
-      )
-      
-      if distance < shortestDistance {
-        shortestDistance = distance
-        closestScreen = screen
-      }
-    }
-    
-    return closestScreen
-  }
-  
-  func getElementSize(element: AXUIElement) -> CGSize? {
-    let kAXFrameAttribute = "AXFrame" as CFString
-    
-    var value: CFTypeRef?
-    let result = AXUIElementCopyAttributeValue(element, kAXFrameAttribute, &value)
-    
-    guard result == .success,
-          let axValue = value as! AXValue?,  // Use forced cast
-          AXValueGetType(axValue) == .cgRect else {
-      return nil
-    }
-    
-    var rect = CGRect.zero
-    if AXValueGetValue(axValue, .cgRect, &rect) {
-      return rect.size
-    }
-    return nil
-  }
-  
-  private func getNewWindowSize(preset: String, window: AXUIElement, centered: Bool = true) {
-    guard let screen = getCurrentScreen() else { return }
-    
-    // Use visibleFrame to account for menu bar and dock
-    let screenFrame = screen.visibleFrame
-    
-    var targetWidth: CGFloat = 0, targetHeight: CGFloat = 0
-    
-    switch preset {
-    case "reasonableSize":
-      targetWidth = min(screenFrame.width * 0.6, 1024)
-      targetHeight = min(screenFrame.height * 0.6, 900)
-      break
-    case "almostMaximize":
-      targetWidth = screenFrame.width * 0.9
-      targetHeight = screenFrame.height * 0.9
-      break
-    case "normal":
-      targetWidth = screenFrame.width * 0.6
-      targetHeight = screenFrame.height * 0.9
-      break
-    case "full":
-      targetWidth = screenFrame.width * 0.95
-      targetHeight = screenFrame.height * 0.95
-      break
-    case "center":
-      guard let windowElement = getElementSize(element: window) else { return }
-      targetWidth = windowElement.width
-      targetHeight = windowElement.height
-      break
-    case "smaller":
-      guard let windowElement = getElementSize(element: window) else { return }
-      targetWidth = windowElement.width - screenFrame.width * 0.1
-      targetHeight = windowElement.height
-      break
-    case "larger":
-      guard let windowElement = getElementSize(element: window) else { return }
-      targetWidth = min(
-        windowElement.width + screenFrame.width * 0.1,
-        screenFrame.width * 0.95
-      )
-      targetHeight = windowElement.height
-      break
-    case "taller":
-      guard let windowElement = getElementSize(element: window) else { return }
-      targetWidth = windowElement.width
-      targetHeight = min(
-        windowElement.height + screenFrame.height * 0.1,
-        screenFrame.height * 0.95
-      )
-      break
-    case "shorter":
-      guard let windowElement = getElementSize(element: window) else { return }
-      targetWidth = windowElement.width
-      targetHeight = windowElement.height - screenFrame.height * 0.1
-      break
-    default:
-      break
-    }
-    
-    if (targetWidth == 0 && targetHeight == 0) { return }
-    
-    var newSize = CGSize(width: targetWidth, height: targetHeight)
-    
-    if (!centered) { return }
-    
-    // Calculate X position relative to screen
-    let newOriginX = screenFrame.origin.x + (screenFrame.width - targetWidth) / 2
-    
-    // Calculate Y position: use screen's max Y as reference and subtract position from top
-    let yOffset = (screenFrame.height - targetHeight) / 2
-    let newOriginY = -(screenFrame.origin.y + yOffset)
-    
-    var newOrigin = CGPoint(x: newOriginX, y: newOriginY)
-    
-    // Set the window position and size
-    AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, AXValueCreate(.cgPoint, &newOrigin)!)
-    AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, AXValueCreate(.cgSize, &newSize)!)
-  }
-  
-  private func registerGlobalHotkeys() {
-    _ = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
-      if event.modifierFlags.contains(.control) {
-        if event.modifierFlags.contains(.option) {
-          switch event.charactersIgnoringModifiers {
-          case String(UnicodeScalar(NSLeftArrowFunctionKey)!):
-            self.resizeActiveWindow(preset: "smaller")
-            break
-            
-          case String(UnicodeScalar(NSRightArrowFunctionKey)!):
-            self.resizeActiveWindow(preset: "larger")
-            break
-            
-          case String(UnicodeScalar(NSUpArrowFunctionKey)!):
-            self.resizeActiveWindow(preset: "taller")
-            break
-            
-          case String(UnicodeScalar(NSDownArrowFunctionKey)!):
-            self.resizeActiveWindow(preset: "shorter")
-            break
-            
-          default:
-            break
-          }
+    // MARK: - Accessibility Permissions
+    func checkAndRequestAccessibilityPermissions() {
+        if checkAccessibilityPermissions() {
+            registerGlobalHotkeys()
+            return
         }
-        
-        switch event.charactersIgnoringModifiers {
-        case "n":
-          self.resizeActiveWindow(preset: "normal")
-          break
-          
-        case "r":
-          self.resizeActiveWindow(preset: "reasonableSize")
-          break
-          
-        case "m":
-          self.resizeActiveWindow(preset: "almostMaximize")
-          break
-          
-        case "f":
-          self.resizeActiveWindow(preset: "full")
-          break
-          
-        case "c":
-          self.resizeActiveWindow(preset: "center")
-          break
-          
-        default:
-          break
-        }
-        
-      }
+        promptForAccessibilityPermissions()
     }
-  }
-  
-  private func resizeActiveWindow(preset: String) {
-    guard let frontApp = NSWorkspace.shared.frontmostApplication else { return }
-    let pid = frontApp.processIdentifier
     
-    // Create an accessibility application element
-    let axApp = AXUIElementCreateApplication(pid)
+    private func checkAccessibilityPermissions() -> Bool {
+        let options: [String: Any] = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false]
+        return AXIsProcessTrustedWithOptions(options as CFDictionary)
+    }
     
-    // Declare a reference for the main window
-    var mainWindow: CFTypeRef?
+    private func promptForAccessibilityPermissions() {
+        let alert = NSAlert()
+        alert.messageText = "Accessibility Permissions Required"
+        alert.informativeText = "This app needs accessibility permissions to resize windows. Please enable permissions in System Preferences."
+        alert.addButton(withTitle: "Open System Preferences")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
+            }
+            pollAccessibilityPermissions()
+        }
+    }
     
-    // Try to get the focused window
-    let result = AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &mainWindow)
+    private func pollAccessibilityPermissions() {
+        if checkAccessibilityPermissions() {
+            registerGlobalHotkeys()
+        }
+    }
     
-    // Ensure the window was retrieved successfully
-    guard result == .success else { return }
-    let window = mainWindow as! AXUIElement
+    // MARK: - Window Positioning Helpers
+    enum Preset {
+        case reasonableSize, almostMaximize, normal, full, center, smaller, larger, taller, shorter
+    }
     
-    getNewWindowSize(preset: preset, window: window)
-  }
-  
-  private func centerAppWindow(window: AXUIElement) {
-    guard let screen = getCurrentScreen() else { return }
+    private func getCurrentScreen(for window: AXUIElement? = nil) -> NSScreen? {
+        // Try to use window's position if provided
+        if let window = window, let windowPoint = getAXWindowPosition(window: window) {
+            for screen in NSScreen.screens {
+                if screen.frame.contains(windowPoint) { return screen }
+            }
+        }
+        // Fallback to frontmost window or main screen
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return NSScreen.main }
+        let pid = frontApp.processIdentifier
+        let axApp = AXUIElementCreateApplication(pid)
+        var focusedWindow: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedWindow)
+        guard result == .success, let focusedWindow = focusedWindow else { return NSScreen.main }
+      let window = focusedWindow as! AXUIElement
+        if let windowPoint = getAXWindowPosition(window: window) {
+            for screen in NSScreen.screens {
+                if screen.frame.contains(windowPoint) { return screen }
+            }
+        }
+        return NSScreen.main
+    }
     
-    // Get current window size
-    guard let windowSize = getElementSize(element: window) else { return }
+    private func getAXWindowPosition(window: AXUIElement) -> CGPoint? {
+        var positionValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionValue) == .success,
+           let axValue = positionValue, AXValueGetType(axValue as! AXValue) == .cgPoint {
+            var point = CGPoint.zero
+          AXValueGetValue(axValue as! AXValue, .cgPoint, &point)
+            return point
+        }
+        return nil
+    }
     
-    // Use visibleFrame to account for menu bar and dock
-    let screenFrame = screen.visibleFrame
+    private func getAXWindowSize(window: AXUIElement) -> CGSize? {
+          var sizeValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeValue) == .success,
+           let axValue = sizeValue, AXValueGetType(axValue as! AXValue) == .cgSize {
+            var size = CGSize.zero
+          AXValueGetValue(axValue as! AXValue, .cgSize, &size)
+            return size
+        }
+        return nil
+    }
     
-    // Calculate center position for both axes
-    let newOriginX = screenFrame.origin.x + (screenFrame.width - windowSize.width) / 2
-    let newOriginY = -(screenFrame.maxY - ((screenFrame.height - windowSize.height) / 2))
+    /// Returns AX coordinate (top-left) to center a given window size on the screen
+     private func centeredAXOrigin(for windowSize: CGSize, on screen: NSScreen) -> CGPoint {
+         let screenFrame = screen.visibleFrame
+         // In AX coordinates, origin is top-left; (0,0) is top-left of main screen
+         let centerX = screenFrame.origin.x + (screenFrame.width - windowSize.width) / 2
+
+         // Convert screen position from Cocoa (bottom-left origin) to AX (top-left origin)
+         let mainScreenHeight = NSScreen.main?.frame.height ?? screenFrame.height
+         // Screen's top-left Y in AX coordinates
+         let screenTopY_AX = mainScreenHeight - (screenFrame.origin.y + screenFrame.height)
+         // Center the window vertically within the screen
+         let centerY_AX = screenTopY_AX + (screenFrame.height - windowSize.height) / 2
+
+         return CGPoint(x: centerX, y: centerY_AX)
+     }
     
-    var newOrigin = CGPoint(x: newOriginX, y: newOriginY)
+    /// Set window position and size in AX coordinates
+    private func setAXWindow(window: AXUIElement, origin: CGPoint, size: CGSize) {
+        var mutableOrigin = origin
+        var mutableSize = size
+        AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, AXValueCreate(.cgPoint, &mutableOrigin)!)
+        AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, AXValueCreate(.cgSize, &mutableSize)!)
+    }
     
-    // Update window position while maintaining its current size
-    AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, AXValueCreate(.cgPoint, &newOrigin)!)
-  }
+    // MARK: - Window Resizing
+    private func applyPreset(_ preset: Preset, to window: AXUIElement, on screen: NSScreen) {
+        let frame = screen.visibleFrame
+        var newSize = CGSize.zero
+        switch preset {
+        case .reasonableSize:
+            newSize.width = min(frame.width * 0.6, 1024)
+            newSize.height = min(frame.height * 0.6, 900)
+        case .almostMaximize:
+            newSize.width = frame.width * 0.9
+            newSize.height = frame.height * 0.9
+        case .normal:
+            newSize.width = frame.width * 0.6
+            newSize.height = frame.height * 0.9
+        case .full:
+            newSize.width = frame.width * 0.95
+            newSize.height = frame.height * 0.95
+        case .center:
+            newSize = getAXWindowSize(window: window) ?? CGSize(width: frame.width * 0.6, height: frame.height * 0.6)
+        case .smaller:
+            let curr = getAXWindowSize(window: window) ?? CGSize(width: frame.width * 0.6, height: frame.height * 0.6)
+            newSize.width = max(curr.width - frame.width * 0.1, 100)
+            newSize.height = curr.height
+        case .larger:
+            let curr = getAXWindowSize(window: window) ?? CGSize(width: frame.width * 0.6, height: frame.height * 0.6)
+            newSize.width = min(curr.width + frame.width * 0.1, frame.width * 0.95)
+            newSize.height = curr.height
+        case .taller:
+            let curr = getAXWindowSize(window: window) ?? CGSize(width: frame.width * 0.6, height: frame.height * 0.6)
+            newSize.width = curr.width
+            newSize.height = min(curr.height + frame.height * 0.1, frame.height * 0.95)
+        case .shorter:
+            let curr = getAXWindowSize(window: window) ?? CGSize(width: frame.width * 0.6, height: frame.height * 0.6)
+            newSize.width = curr.width
+            newSize.height = max(curr.height - frame.height * 0.1, 64)
+        }
+        let newOrigin = centeredAXOrigin(for: newSize, on: screen)
+        setAXWindow(window: window, origin: newOrigin, size: newSize)
+    }
+    
+    private func resizeActiveWindow(preset: Preset) {
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return }
+        let pid = frontApp.processIdentifier
+        let axApp = AXUIElementCreateApplication(pid)
+        var focusedWindow: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedWindow) == .success else { return }
+        let window = focusedWindow as! AXUIElement
+        guard let screen = getCurrentScreen(for: window) else { return }
+        applyPreset(preset, to: window, on: screen)
+    }
+    
+    // MARK: - Hotkey Registration (unchanged)
+    private func registerGlobalHotkeys() {
+        _ = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
+            if event.modifierFlags.contains(.control) {
+                if event.modifierFlags.contains(.option) {
+                    switch event.charactersIgnoringModifiers {
+                    case String(UnicodeScalar(NSLeftArrowFunctionKey)!):
+                        self.resizeActiveWindow(preset: .smaller)
+                    case String(UnicodeScalar(NSRightArrowFunctionKey)!):
+                        self.resizeActiveWindow(preset: .larger)
+                    case String(UnicodeScalar(NSUpArrowFunctionKey)!):
+                        self.resizeActiveWindow(preset: .taller)
+                    case String(UnicodeScalar(NSDownArrowFunctionKey)!):
+                        self.resizeActiveWindow(preset: .shorter)
+                    default: break
+                    }
+                }
+                switch event.charactersIgnoringModifiers {
+                case "n": self.resizeActiveWindow(preset: .normal)
+                case "r": self.resizeActiveWindow(preset: .reasonableSize)
+                case "m": self.resizeActiveWindow(preset: .almostMaximize)
+                case "f": self.resizeActiveWindow(preset: .full)
+                case "c": self.resizeActiveWindow(preset: .center)
+                default: break
+                }
+            }
+        }
+    }
 }
+
