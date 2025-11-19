@@ -9,14 +9,15 @@ import Cocoa
 import AppKit
 import Foundation
 import ApplicationServices
+import Combine
 
 /// AccessibilityManager provides window resizing and centering using Accessibility APIs with correct top-left coordinate handling.
-class AccessibilityManager: NSObject {
+class AccessibilityManager: NSObject, ObservableObject {
     static let shared = AccessibilityManager()
 
     // MARK: - App Exclusion
     private static let excludedAppsKey = "excludedAppBundleIDs"
-    private var excludedAppBundleIDs: Set<String> = []
+    @Published private(set) var excludedAppBundleIDs: Set<String> = []
 
     override init() {
         super.init()
@@ -52,6 +53,31 @@ class AccessibilityManager: NSObject {
 
     func getFrontmostAppName() -> String? {
         return NSWorkspace.shared.frontmostApplication?.localizedName
+    }
+
+    // Helper to get app display name from bundle ID
+    func getAppName(for bundleID: String) -> String {
+        if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID),
+           let bundle = Bundle(url: appURL),
+           let name = bundle.infoDictionary?["CFBundleName"] as? String {
+            return name
+        }
+        // Fallback: return bundle ID if we can't get the name
+        return bundleID
+    }
+
+    // Helper to get app icon from bundle ID
+    func getAppIcon(for bundleID: String) -> NSImage? {
+        if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            return NSWorkspace.shared.icon(forFile: appURL.path)
+        }
+        return nil
+    }
+
+    // Remove an app from exclusions (alternative to toggle for explicit removal)
+    func removeAppExclusion(bundleID: String) {
+        excludedAppBundleIDs.remove(bundleID)
+        saveExcludedApps()
     }
 
     // MARK: - Public Preset Actions

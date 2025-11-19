@@ -70,6 +70,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     menu.addItem(NSMenuItem.separator())
 
+    // Add Settings menu item
+    let settingsMenuItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
+    settingsMenuItem.target = self
+    menu.addItem(settingsMenuItem)
+
     menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
 
     menu.delegate = self
@@ -78,6 +83,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
   
   @objc private func quit() {
     NSApp.terminate(nil)
+  }
+
+  @objc private func openSettings() {
+    SettingsWindowManager.shared.openSettings()
   }
 
   @objc private func toggleExcludeApp() {

@@ -1,0 +1,67 @@
+# Xcode
+.DS_Store
+build/
+DerivedData/
+*.xcdebugger
+*.xccheckout
+*.xcscmblueprint
+xcuserdata/
+*.xcuserstate
+
+# Xcode project/workspace
+*.xcworkspace
+!WorkspaceSettings.xcsettings
+
+# Swift Package Manager
+/.build/
+/Packages
+/.swiftpm/
+.swift-version
+
+# CocoaPods
+Pods/
+# If you want to track Podfile.lock for apps, remove the next line
+# Podfile.lock
+
+# Carthage
+Carthage/Build/
+Carthage/Checkouts/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+?.playgroundbook
+
+# Archives, packages, symbol files
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.app.dSYM
+
+# Generated files
+*.hmap
+*.ipa
+*.mobileprovision
+*.xcfilelist
+
+# Misc
+*.moved-aside
+*.swp
+*~.nib
+*.lock
+.env
+.env.*.local
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# User-specific
+.idea/
+.vscode/
